@@ -1,309 +1,16 @@
----
-title: "Cytokine Profile in Infertile Women"
-author: "Usman"
-date: "2023-12-18"
-output: 
-  html_document: 
-    toc: yes
-    number_sections: yes
----
-
-```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
-library(readxl)
-library(janitor)
-library(tidyverse)
-library(finalfit)
-library(dplyr)
-library(MASS)
-library(factoextra)
-library(rstatix)
+#Data wrangling of code for SecioDemographic Characteristics
+# median and IQR for Marital Duration of couples
+#Correlation and Logistic regression code chunk
+#To syntactically clean our data we use "janitor" package
 library(ggpubr)
-Chlamydia_Venn <- read_excel("C:/Users/Usman Ola/Downloads/Chlamydia Trichomatis.xlsx")
+library(tidyverse)
+library(janitor)
 Chlamydia_logistic_reg <- clean_names(Chlamydia_Venn)
 names(Chlamydia_logistic_reg) # All variables names are automagically cleaned!
-newdata<-Chlamydia_logistic_reg[!Chlamydia_logistic_reg$how_long_7=="Nil",]%>%
-  mutate(age_cat=cut(age,
-                           breaks = c(0,35,Inf),
-                           labels = c("<35",">35")),
-          Marital_dur=ifelse(how_long_7=="1","First_Child","Children"),
-         Marital_cat=cut(as.numeric(how_long_7),
-                         c(0,20,Inf),
-                         c("≤20",">20")),
-         Times_mar=case_when(how_times=="Fouth"~"second",
-                             how_times=="Third"~"second",
-                             how_times=="First"~"first",
-                             how_times=="Second"~"second"),
-         wom_edu=str_replace(level_edu,"p","P"),
-         husband_occ=case_when(
-           husb_occ=="Leccturer"~"Lecturer",
-           husb_occ=="Teacher"~"Lecturer",
-           husb_occ=="Civil Serv"~"Civil_ser",
-           husb_occ=="Lecturer"~"Lecturer",
-           husb_occ=="Civil serv"~"Civil_ser",
-           husb_occ=="Publicserv"~"Civil_ser",
-           husb_occ=="Civilserv"~"Civil_ser",
-           husb_occ=="Bussiness"~"Bussines",
-           husb_occ=="Business"~"Bussines",
-           husb_occ=="Carpenter"~"Artisan",
-           husb_occ=="Artisan"~"Artisan",
-           husb_occ=="Farmer"~"Farmer",
-           TRUE~"others"),
-         fam_type=str_replace_all(family_typ,c("mono"="Mono")),
-         woman_occ=case_when(
-           occup=="Teacher"~"Teacher",
-           occup=="teacher"~"Teacher",
-           occup=="Civil Serv"~"Civil_ser",
-           occup=="House wife"~"House_wife",
-           occup=="Civil serv"~"Civil_ser", 
-           occup=="Civilserv"~"Civil_ser",
-           occup=="Student"~"Student",
-           occup=="Tailor"~"Artisan",
-           occup=="Artisan"~"Artisan", 
-           occup=="Farmer"~"Farmer",
-           TRUE~"others"),woman_occ1=ifelse(woman_occ=="Teacher","Teacher","other"),
-         woman_occ2=str_replace_all(woman_occ,c("Farmer"="others","Student"="others","Teacher"="others","Artisan"="others")),
-         woman_occ2f=factor(woman_occ2,levels=c("others","House_wife","Civil_ser")),
-         any_preg=recode(any_preg,"No"="Primary_infert",
-                         "Yes"="secondary_infert"),
-         how_many=recode(
-           how_many,
-           "Eight"=8,
-           "Five"=5,
-           "Four"=4,
-           "Nil"=0,
-           "Once"=1,
-           "One"=1,
-           "Seven"=7,
-           "Six"=6,
-           "Ten"=10,
-           "Three"=3,
-           "Thrice"=3,
-           "Twice"=2,
-           "Twince"=2,
-           "Two"=2,
-           "10"=10,
-           "2"=2,
-           "3"=3),
-         Pregnancy=cut(how_many,c(-Inf,0.9,1,5,10),
-                       c("No_preg","once","2-5","6-10")), 
-         to_term=recode(
-           to_term,
-           "Eight"=8,
-           "Five"=5,
-           "Four"=4,
-           "Nil"=0,
-           "Once"=1,
-           "One"=1,"0ne"=1,"one"=1,
-           "Seven"=7,
-           "Six"=6,
-           "Ten"=10,
-           "Three"=3,
-           "Thrice"=3,
-           "Twice"=2,
-           "Twince"=2,
-           "Two"=2,
-           "10"=10,
-           "2"=2,
-           "3"=3,"Nine"=9),
-         term_cat=cut(to_term,c(-Inf,0.9,1,5,10),right=TRUE,
-                  c("no_child","One_child","2-5","6-10"),.drop=FALSE) ,
-         age_of_last=as.numeric(str_replace(age_of_last,"Nil","0")),
-        ageoflast_cat=cut(age_of_last,c(-Inf,0.9,1,5,10,15,20),
-                c("none","One_year","1-5","6-10","11-15","16-20")),
-         family_pla,
-         which_one,
-         how_long_20=recode(
-           how_long_20,"1"=1,"2"=2,"3"=3,"5"=5,"6"=6,"Nil"=0 ,"<6M"=1,"NiL"=0),
-         Vaginal_discharge=str_replace_all(color,c("NIL"="Nil","Brownish"="Reddish")),
-        vaginal_discharge1=str_replace_all(Vaginal_discharge,c("Brownish"="Yellowish","Reddish"="Yellowish")),
-         il_10_quatile=ntile(il_10_avrg,3),
-         il_10_quatile_cat=recode(il_10_quatile,"1"="firstq","2"="sec","3"="thir"),
-         ifn_gam_quatile=ntile(ifn_gamm_avrg,3),
-         ifn_gam_quatile_cat=recode(ifn_gam_quatile,"1"="firstq","2"="sec","3"="thir"),
-         hsp_60_quatile=ntile(hsp_60_avrg,3),chlamydia_pos=ifelse(ig_g=="Pos"|ig_m=="Pos","Pos","Neg"),
-         hsp_60_quatile_cat=recode(hsp_60_quatile,"1"="firstq","2"="sec","3"="thir")
-         
-  )
+glimpse(Chlamydia_logistic_reg)
 
-```
+# Age categorization
 
-## **R Markdown of cytokine profile in infertile women: focus on dimension \n reduction**
-
-### **Principal Component Analysis (PCA) for dimension reduction**
-### **PCA for cluster recognition**
-## **Preparing data for dimension and variable contribution**
-### **Scree Plot**
-
-
-```{r pressure}
-cytokine_response<-newdata[newdata$group=="Infertile",c("il_10_avrg","ifn_gamm_avrg","hsp_60_avrg")]
-
-# Run PCA
-cytokine_pca<- prcomp(cytokine_response,scale=TRUE)
-
-# Scree plot of variance
-
-fviz_eig(cytokine_pca,
-         addlabels = TRUE,
-         ylim=c(0,70),
-         main = "Cytokine screePlot"
-         )
-
-```
-
-### PCA Plot
-
-```{r}
-# Biplot with Default Settings
-fviz_pca_biplot(cytokine_pca)
-
-# Biplot with labeled variables
-fviz_pca_biplot(cytokine_pca,
-                label = "var")
-```
-
-### Pattern Recognition
-
-```{r}
-# Biplot with customized colored groups and variables
-fviz_pca_biplot(cytokine_pca,
-                 label="var",addEllipses = TRUE,title="Cytokine PCA-Biplot",
-                 habillage=newdata[newdata$group=="Infertile",]$chlamydia_pos                  ,col.var="black")+scale_color_manual(name="Chlamydia antigenemia",values=c("orange","purple"))+labs(x="PCA2 (55.6%)",y="PCA2 (29.1%)")
-```
-
-## Principal Component Analysis for cytokines in Fertile and Infertile Women
-
-```{r}
-# Cytokine Response in fertile and infertile women
-cytokine_response_g<-newdata[,c("il_10_avrg","ifn_gamm_avrg","hsp_60_avrg")]
-
-# Run PCA
-cytokine_pca_g<- prcomp(cytokine_response_g,scale=TRUE)
-
-# Scree plot of variance
-
-fviz_eig(cytokine_pca_g,
-         addlabels = TRUE,
-         ylim=c(0,70),
-         main = "Cytokine screePlot"
-)
-
-# Biplot with Default Settings
-fviz_pca_biplot(cytokine_pca_g)
-
-# Biplot with labeled variables
-fviz_pca_biplot(cytokine_pca_g,
-                label = "var")
-
-# Biplot with customized colored groups and variables
-fviz_pca_biplot(cytokine_pca_g,
-                label = "var",
-                habillage = newdata$chlamydia_pos)
-
-# Biplot with customized colored groups and variables
-fviz_pca_biplot(cytokine_pca_g,
-                label="var",addEllipses = TRUE,title="Cytokine PCA-Biplot",
-                habillage=newdata$chlamydia_pos,
-                col.var="black")+scale_color_manual(values=c("orange","purple"))+
-  labs(x="PCA1 (55.6%)",y="PCA2 (29.1%)")
-
-```
-
-## **Cytokine levels in Fertile and Infertile subset by their Chlamydial positivity**
-
-```{r}
-pwc <- newdata %>%group_by(chlamydia_pos)%>%
-  dunn_test(il_10_avrg~group,p.adjust.method = "none")
-pwc <- pwc %>% add_y_position()
-pwc
-ggplot(data=newdata,aes(x=any_preg,y=hsp_60_avrg))+
-  geom_violin(trim = FALSE,col="blue",size=1.5)+
-  facet_wrap(~group,nrow=1)
-
-Interleukin_10<-ggplot(data=newdata,aes(x=group,y=il_10_avrg))+
-  geom_violin(trim = FALSE,col="blue",size=1.5)+
-  geom_boxplot(width=0.1)+
-  # geom_dotplot(binaxis='y', stackdir='center', dotsize=0.4)+
-  stat_pvalue_manual(pwc, tip.length = 0.02,hide.ns = FALSE,
-  bracket.size = 1,size=7,label = "p.adj.signif",color="darkblue")+facet_wrap(~chlamydia_pos)
-
-pwc1 <- newdata %>%group_by(chlamydia_pos)%>%
-  dunn_test(ifn_gamm_avrg~group,p.adjust.method = "none")
-pwc1 <- pwc1 %>% add_y_position()
-pwc1
-Interferon_alpha<-ggplot(data=newdata,aes(x=group,y=ifn_gamm_avrg))+
-  geom_violin(trim = FALSE,col="blue",size=1.5)+
-  geom_boxplot(width=0.1)+facet_wrap(~chlamydia_pos)+
-  # geom_dotplot(binaxis='y', stackdir='center', dotsize=0.4)+
-  stat_pvalue_manual(pwc1, tip.length = 0.02,hide.ns = FALSE,
-                     bracket.size = 1,size=7,label = "p.adj.signif",color="darkblue" )
-
-pwc2 <- newdata %>%group_by(chlamydia_pos)%>%
-  dunn_test(hsp_60_avrg~group,p.adjust.method = "none")
-pwc2 <- pwc2 %>% add_y_position()
-pwc2
-Heat_shock_Prot<-newdata%>%group_by(group)%>%ggplot(aes(x=group,y=hsp_60_avrg))+
-  geom_violin(trim = FALSE,col="blue",size=1.5)+
-  geom_boxplot(width=0.1)+facet_wrap(~chlamydia_pos)+
-  #geom_dotplot(binaxis='y', stackdir='center', dotsize=0.4)+
-  stat_pvalue_manual(pwc2, tip.length = 0.02,hide.ns = TRUE,
-                     bracket.size = 1,size=7,label = "p.adj.signif",color="darkblue" )
-
-# Cytokine Levels of Fertile and Infertile women 
-ggarrange(Interleukin_10,Interferon_alpha,Heat_shock_Prot,nrow = 1)
-```
-
-
-### Cytokine levels Infertility data subset by Primary or Secondary Infertility and their Chlamydial sensitivity
-
-```{r}
-pwc3 <- newdata[newdata$group=="Infertile",] %>%
-  group_by(chlamydia_pos)%>%
-  dunn_test(il_10_avrg~any_preg,p.adjust.method = "none")
-pwc3 <- pwc3 %>% add_y_position()
-pwc3
-Interleukin<-newdata[newdata$group=="Infertile",]%>%
-  ggplot(aes(x=any_preg,y=il_10_avrg))+
-  geom_violin(trim = FALSE,col="blue",size=1.5)+
-  geom_boxplot(width=0.1)+facet_wrap(~chlamydia_pos,nrow=1)
-  # geom_dotplot(binaxis='y', stackdir='center', dotsize=0.4)+
-  stat_pvalue_manual(pwc3, tip.length = 0.02,hide.ns = FALSE,
-                     bracket.size = 1,size=7,label = "p.adj.signif",color="darkblue" )
-
-  pwc5 <- newdata[newdata$group=="Infertile",] %>%
-    group_by(chlamydia_pos)%>%
-    dunn_test(ifn_gamm_avrg~any_preg,p.adjust.method = "none")
-  pwc5 <- pwc5 %>% add_y_position()
-  pwc5
-  Interferon<-newdata[newdata$group=="Infertile",]%>%
-    ggplot(aes(x=any_preg,y=ifn_gamm_avrg))+
-    geom_violin(trim = FALSE,col="blue",size=1.5)+
-    geom_boxplot(width=0.1)+facet_wrap(~chlamydia_pos,nrow=1)
-  # geom_dotplot(binaxis='y', stackdir='center', dotsize=0.4)+
-  stat_pvalue_manual(pwc5, tip.length = 0.02,hide.ns = FALSE,
-                     bracket.size = 1,size=7,label = "p.adj.signif",color="darkblue" )
-
-  pwc6 <- newdata[newdata$group=="Infertile",] %>%
-    group_by(chlamydia_pos)%>%
-    dunn_test(hsp_60_avrg~any_preg,p.adjust.method = "none")
-  pwc6 <- pwc6 %>% add_y_position()
-  pwc6
-  Hsp<-newdata[newdata$group=="Infertile",]%>%
-    ggplot(aes(x=any_preg,y=hsp_60_avrg))+
-    geom_violin(trim = FALSE,col="blue",size=1.5)+
-    geom_boxplot(width=0.1)+facet_wrap(~chlamydia_pos,nrow=1)
-  # geom_dotplot(binaxis='y', stackdir='center', dotsize=0.4)+
-  stat_pvalue_manual(pwc6, tip.length = 0.02,hide.ns = FALSE,
-                     bracket.size = 1,size=7,label = "p.adj.signif",color="darkblue" )
- 
-  ggarrange(Interleukin,Interferon,Hsp,nrow = 1)
-
-```
-
-## Socio_Demographic Factor of Fertile in Infertile women of our study population
-
-```{r}
 age_cat<-Chlamydia_logistic_reg%>%group_by(group)%>%
   mutate(age1=cut(age,
                   breaks = c(0,35,Inf),
@@ -566,6 +273,121 @@ summary(Chlamydia_logistic_reg$il_10_avrg)
 summary(Chlamydia_logistic_reg$ifn_gamm_avrg)
 summary(Chlamydia_logistic_reg$hsp_60_avrg) 
 
+# Initializing for Loggistic regression
+newdata<-Chlamydia_logistic_reg[!Chlamydia_logistic_reg$how_long_7=="Nil",]%>%
+  mutate(age_cat=cut(age,
+                           breaks = c(0,35,Inf),
+                           labels = c("<35",">35")),
+          Marital_dur=ifelse(how_long_7=="1","First_Child","Children"),
+         Marital_cat=cut(as.numeric(how_long_7),
+                         c(0,20,Inf),
+                         c("≤20",">20")),
+         Times_mar=case_when(how_times=="Fouth"~"second",
+                             how_times=="Third"~"second",
+                             how_times=="First"~"first",
+                             how_times=="Second"~"second"),
+         wom_edu=str_replace(level_edu,"p","P"),
+         husband_occ=case_when(
+           husb_occ=="Leccturer"~"Lecturer",
+           husb_occ=="Teacher"~"Lecturer",
+           husb_occ=="Civil Serv"~"Civil_ser",
+           husb_occ=="Lecturer"~"Lecturer",
+           husb_occ=="Civil serv"~"Civil_ser",
+           husb_occ=="Publicserv"~"Civil_ser",
+           husb_occ=="Civilserv"~"Civil_ser",
+           husb_occ=="Bussiness"~"Bussines",
+           husb_occ=="Business"~"Bussines",
+           husb_occ=="Carpenter"~"Artisan",
+           husb_occ=="Artisan"~"Artisan",
+           husb_occ=="Farmer"~"Farmer",
+           TRUE~"others"),
+         fam_type=str_replace_all(family_typ,c("mono"="Mono")),
+         woman_occ=case_when(
+           occup=="Teacher"~"Teacher",
+           occup=="teacher"~"Teacher",
+           occup=="Civil Serv"~"Civil_ser",
+           occup=="House wife"~"House_wife",
+           occup=="Civil serv"~"Civil_ser", 
+           occup=="Civilserv"~"Civil_ser",
+           occup=="Student"~"Student",
+           occup=="Tailor"~"Artisan",
+           occup=="Artisan"~"Artisan", 
+           occup=="Farmer"~"Farmer",
+           TRUE~"others"),woman_occ1=ifelse(woman_occ=="Teacher","Teacher","other"),
+         woman_occ2=str_replace_all(woman_occ,c("Farmer"="others","Student"="others","Teacher"="others","Artisan"="others")),
+         woman_occ2f=factor(woman_occ2,levels=c("others","House_wife","Civil_ser")),
+         any_preg=recode(any_preg,"No"="Primary_infert",
+                         "Yes"="secondary_infert"),
+         how_many=recode(
+           how_many,
+           "Eight"=8,
+           "Five"=5,
+           "Four"=4,
+           "Nil"=0,
+           "Once"=1,
+           "One"=1,
+           "Seven"=7,
+           "Six"=6,
+           "Ten"=10,
+           "Three"=3,
+           "Thrice"=3,
+           "Twice"=2,
+           "Twince"=2,
+           "Two"=2,
+           "10"=10,
+           "2"=2,
+           "3"=3),
+         Pregnancy=cut(how_many,c(-Inf,0.9,1,5,10),
+                       c("No_preg","once","2-5","6-10")), 
+         to_term=recode(
+           to_term,
+           "Eight"=8,
+           "Five"=5,
+           "Four"=4,
+           "Nil"=0,
+           "Once"=1,
+           "One"=1,"0ne"=1,"one"=1,
+           "Seven"=7,
+           "Six"=6,
+           "Ten"=10,
+           "Three"=3,
+           "Thrice"=3,
+           "Twice"=2,
+           "Twince"=2,
+           "Two"=2,
+           "10"=10,
+           "2"=2,
+           "3"=3,"Nine"=9),
+         term_cat=cut(to_term,c(-Inf,0.9,1,5,10),right=TRUE,
+                  c("no_child","One_child","2-5","6-10"),.drop=FALSE) ,
+         age_of_last=as.numeric(str_replace(age_of_last,"Nil","0")),
+        ageoflast_cat=cut(age_of_last,c(-Inf,0.9,1,5,10,15,20),
+                c("none","One_year","1-5","6-10","11-15","16-20")),
+         family_pla,
+         which_one,
+         how_long_20=recode(
+           how_long_20,"1"=1,"2"=2,"3"=3,"5"=5,"6"=6,"Nil"=0 ,"<6M"=1,"NiL"=0),
+         Vaginal_discharge=str_replace_all(color,c("NIL"="Nil","Brownish"="Reddish")),
+        vaginal_discharge1=str_replace_all(Vaginal_discharge,c("Brownish"="Yellowish","Reddish"="Yellowish")),
+         il_10_quatile=ntile(il_10_avrg,3),
+         il_10_quatile_cat=recode(il_10_quatile,"1"="firstq","2"="sec","3"="thir"),
+         ifn_gam_quatile=ntile(ifn_gamm_avrg,3),
+         ifn_gam_quatile_cat=recode(ifn_gam_quatile,"1"="firstq","2"="sec","3"="thir"),
+         hsp_60_quatile=ntile(hsp_60_avrg,3),chlamydia_pos=ifelse(ig_g=="Pos"|ig_m=="Pos","Pos","Neg"),
+         hsp_60_quatile_cat=recode(hsp_60_quatile,"1"="firstq","2"="sec","3"="thir")
+         
+  )
+#%>%
+ # select(group,age_cat,il_10_quatile,age,il_10_quatile_cat,ifn_gam_quatile_cat,
+  #       il_10_avrg,ifn_gamm_avrg, hsp_60_avrg,hsp_60_quatile_cat,
+   #      ifn_gam_quatile,hsp_60_quatile,Vaginal_discharge,hsp_60_quatile_cat,
+    #     term_cat,Pregnancy,any_preg,fam_type,wom_edu,
+     #    Times_mar,Marital_cat,Marital_dur,
+      #   ageoflast_cat,vaginal_disc,chlamydia_pos,
+       #  discomfort,odour,vaginal_disc,which_one,family_pla,age_of_last,
+        # how_long_20)#%>%
+ # view()
+
 # Final build up of the Socio-demographic factors surrounding reproductive pathology
 
 Socio_eco<-bind_rows(list(
@@ -623,15 +445,199 @@ Socio_eco%>%mutate(P_Value=recode
                                           "...76"="Quatile.2",
                                           "...77"="Quatile.3"))
 )
-```
+  #write.csv(.,"socio_demof.csv")
 
-## Exploratory Logistic Data Analysis
-### Infertiliy
-### Primary and Secondary Infertility
 
-```{r}
+  #Quick exploratory data analysis
+library(DataExplorer)
+plot_missing(Chlamydia_logistic_reg) #The missing value exploration plot shows,
+#we don’t have missing value of more than 25% for each variable. We don’t have 
+#any variable that will be dropped using a complete deletion. In fact, the 
+#missing values are tolerable and performing imputation strategies is 
+#practically possible.
+
+#Chlamydia_logistic_reg <- Chlamydia_logistic_reg[complete.cases(Chlamydia_logistic_reg), ] 
+# This deletes all rows with missing values
+
+plot_histogram(Chlamydia_logistic_reg) # Almost all variables are skewed
+
+logis<-glm(group~marital_s,family=binomial)
+
+logistic_reg<-glm(as.factor(Chlamydia_logistic_reg$group)~Chlamydia_logistic_reg$age+
+                    Chlamydia_logistic_reg$marital_status+
+                    Chlamydia_logistic_reg$husb_occ,family=binomial)
+summary(logistic_reg)
+
+require(MASS)
+or_CI <- round(exp(cbind(coef(logistic_reg), confint(logistic_reg))), digits=3) %>% 
+  as.data.frame()
+
+or_CI <- or_CI %>% 
+  mutate(variable=rownames(or_CI)) # extract the variables from rownames
+
+
+or_CI <- rename(or_CI, c("AOR" = "V1",
+                         "lower_bound"= "2.5 %",
+                         "upper_bound"="97.5 %" ))
+# Reorder variables
+col_order <- c("variable", "AOR", "lower_bound", "upper_bound")
+or_CI <- or_CI[, col_order] #reorder variables in the data frame
+
+
+plot_logit_model <- or_CI[-1,] %>%  #remove row number 1 (The intercept) 
+  ggplot(aes(x = reorder(variable, AOR), y = AOR)) +
+  geom_point(shape = 15,
+             size  = 4, width = 0.1,
+             position = "dodge", color="black") + 
+  geom_errorbar(aes(ymin  = lower_bound,
+                    ymax  = upper_bound),
+                width = 0.2,
+                size  = 0.7,
+                position = "dodge", color="turquoise4") +
+  theme(axis.title = element_text(face = "bold")) +
+  xlab("Variables") + ylab("Adjusted odds ratios with 95% CI") +
+  coord_flip(ylim = c(0, 2.5)) + 
+  geom_hline(yintercept = 1, color = "red", size = 1) +
+  theme(axis.title = element_text(size = 17)) + 
+  theme(axis.text = element_text(size = 14)) 
+plot_logit_model
+
+for(i in 1:215){
+  x<- Chlamydia_logistic_reg$to_term[i]
+  if(x=="one")
+    print(0)
+} | if(x!="one") {
+  print(1)
+}
+
+Chlamydia_logistic_reg%>%
+  select(age_of_last,to_term)%>%
+  mutate(last=ifelse(to_term=="one",1,0))
+
+Chlamydia_logistic_reg%>%
+  select(age_of_last,to_term)%>%
+  mutate(last=ifelse(to_term %in% c("one","Two","Three"),1,0))%>% 
+  tail()
+
+x<-vector(mode = "integer")
+
+for(i in 1:215){
+  x<- Chlamydia_logistic_reg$to_term[i]
+  if(x=="one")
+    print("0")
+  x[i]<-x
+} | if(x!="one"|x!="four") {
+  print("1")
+  
+}
+
+sn<-vector()
+for(i in 1:215){
+  x<- Chlamydia_logistic_reg$to_term[i]
+  
+  if(x=="one")
+    print("0")
+} | if(x!="one"|x!="Four") {
+  print("1")
+  
+}
+
+for(i in 1:215){
+  output<- Chlamydia_logistic_reg$to_term[i]
+  if(output=="one"){
+    print(0)
+  }|if(output=="Three"){
+    print(0)
+    
+  }
+  output
+}
+for(i in 1:215){
+  output[i]<- Chlamydia_logistic_reg$to_term[i]
+  if(output[i]=="Three"){
+    print(0)
+  }
+  print(output[i])
+}
+
+
+
+library(finalfit) 
+explanatory = c( "age",
+                 "vaginal_disc",
+                 "Pregnancy",
+                 "wom_edu",
+                 "odour")
+dependent = "group"
+newdata %>%
+  coefficient_plot(dependent, explanatory, table_text_size=3, 
+                   title_text_size=12,
+                   plot_opts=list(xlab("Beta, 95% CI"), 
+                                  theme(axis.title = element_text(size=12))))
+
+
+require(MASS)
+or_CI <- round(exp(cbind(coef(Model), confint(Model))), digits=3) %>% 
+  as.data.frame()
+or_CI <- or_CI %>% 
+  mutate(variable=rownames(or_CI)) # extract the variables from rownames
+
+or_CI <- rename(or_CI, c("AOR"="V1" ,
+                         "lower_bound"=`2.5 %` ,
+                         "upper_bound"= `97.5 %`))
+# We don't need to plot the intercept. We can remove it from our data
+# Reorder variables
+col_order <- c("variable", "AOR", "lower_bound", "upper_bound")
+or_CI <- or_CI[, col_order] #reorder variables in the data frame
+
+plot_logit_model <- or_CI[-1,] %>%  #remove row number 1 (The intercept) 
+  ggplot(aes(x = reorder(variable, AOR), y = AOR)) +
+  geom_point(shape = 15,
+             size  = 4, width = 0.1,
+             position = "dodge", color="black") + 
+  geom_errorbar(aes(ymin  = lower_bound,
+                    ymax  = upper_bound),
+                width = 0.2,
+                size  = 0.7,
+                position = "dodge", color="turquoise4") +
+  theme(axis.title = element_text(face = "bold")) +
+  xlab("Variables") + ylab("Adjusted odds ratios with 95% CI") +
+  coord_flip(ylim = c(0, 2.5)) + 
+  geom_hline(yintercept = 1, color = "red", size = 1) +
+  theme(axis.title = element_text(size = 17)) + 
+  theme(axis.text = element_text(size = 14)) 
+plot_logit_model
+
+
+
+
+library(finalfit) 
+explanatory = c( "age",
+                 "how_long_20", 
+                 "term_cat"
+                 )
+dependent = "group"
+newdata %>%
+  or_plot(dependent, explanatory, table_text_size=3, 
+                   title_text_size=12,
+                   plot_opts=list(xlab("Beta, 95% CI"), 
+                                  theme(axis.title = element_text(size=12))))
+
+
+# first model
+Model1<-newdata%>%glm(
+  as.factor(group)~ig_m+
+    ig_g+
+    vaginal_disc+
+    odour+
+    Marital_cat+
+    Times_mar+
+    woman_occ1+age_cat+wom_edu+
+    how_many,
+  data = .,family="binomial")%>%
+  summary()
+
 # Logistic regression Plot for model1
-newdata$group<-as.factor(newdata$group)
 explanatory = c( "ig_m",
                    "ig_g",
                    "vaginal_disc",
@@ -658,7 +664,6 @@ explanatory = c( "ig_m",
                  "woman_occ1","age_cat","wom_edu",
                  "how_many"
 )
-
 dependent = "group"
 newdata %>%
   or_plot(dependent, explanatory, table_text_size=3, 
@@ -667,8 +672,6 @@ newdata %>%
                          theme(axis.title = element_text(size=12))))
 
 # Socio-demographic risk factors for Infertility type in the study population
-
-newdata$any_preg<-factor(newdata$any_preg,levels=c("Primary_infert","secondary_infert"))
 
 newdata[newdata$group=="Infertile",]%>%
   glm(factor(any_preg)~family_pla+
@@ -686,14 +689,14 @@ explanatory = c( "family_pla",
                    "chlamydia_pos"
 )
 
-
+newdata$any_preg<-factor(newdata$any_preg,levels=c("Primary_infert","secondary_infert"))
 dependent = "any_preg"
 
 newdata[newdata$group=="Infertile",] %>%
-  or_plot(dependent, explanatory, table_text_size=3, 
-          title_text_size=12,
+  or_plot(dependent, explanatory, table_text_size=7, 
+          title_text_size=15,
           plot_opts=list(xlab("Beta, 95% CI"), 
-                         theme(axis.title = element_text(size=12))))
+                         theme(axis.title = element_text(size=15))))
 
 # Model (sociodemographic) to predict Primary Infertility
 
@@ -710,10 +713,7 @@ newdata$any_preg<-factor(newdata$any_preg,levels=c("secondary_infert","Primary_i
 dependent = "any_preg"
 
 newdata[newdata$group=="Infertile",] %>%
-  or_plot(dependent, explanatory, table_text_size=3, 
+  or_plot(dependent, explanatory, table_text_size=4.5, 
           title_text_size=12,
           plot_opts=list(xlab("Beta, 95% CI"), 
                          theme(axis.title = element_text(size=12))))
-
-```
-
