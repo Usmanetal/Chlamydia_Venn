@@ -146,3 +146,143 @@ ggdensity(Chlamydia_logistic_reg, x = "hsp_60_avrg", fill = "lightgray", title =
 # Distribution of il_10_avrg variable
 ggdensity(Chlamydia_logistic_reg, x = "il_10_avrg", fill = "lightgray", title = "interleukin_10") +
     stat_overlay_normal_density(color = "red", linetype = "dashed")
+
+ggplot(newdata,aes(x=chlamydia_pos,y=il_10_avrg,color=group))+
+  geom_boxplot()+scale_color_manual(name="",values = c("blue","black"))+
+  geom_point(position=position_jitterdodge())+
+  stat_pvalue_manual(pwc, tip.length = 0.02,hide.ns = FALSE,
+  y.position = c(500,620),bracket.size = 1,size=7,
+  label = "p={format.pval(pv=p.adj,digits = 2)}",color="darkblue")+
+  geom_line(data = tibble(x=c(1.2,2.18),y=c(600,600)),aes(x=x,y=y),
+  inherit.aes = FALSE,size=1,color="darkblue")+
+  geom_line(data = tibble(x=c(1.2,1.2),y=c(600,585)),aes(x=x,y=y),
+  inherit.aes = FALSE,size=1,color="darkblue")+
+  geom_line(data = tibble(x=c(0.81,1.8),y=c(400,400)),aes(x=x,y=y),
+  inherit.aes = FALSE,size=1,color="darkblue")+
+  geom_line(data = tibble(x=c(0.81,0.81),y=c(400,385)),aes(x=x,y=y),
+  inherit.aes = FALSE,size=1,color="darkblue")+
+  geom_line(data = tibble(x=c(1.8,1.8),y=c(400,385)),aes(x=x,y=y),
+  inherit.aes = FALSE,size=1,color="darkblue")+
+  geom_line(data = tibble(x=c(2.18,2.18),y=c(600,585)),aes(x=x,y=y),
+            inherit.aes = FALSE,size=1,color="darkblue")
+
+Il_10<-ggplot(newdata,aes(x=chlamydia_pos,y=il_10_avrg,col=group))+
+  geom_boxplot()+scale_color_manual(name="",values = c("blue","black"))+
+  geom_point(position=position_jitterdodge())+
+  stat_pvalue_manual(pwc, tip.length = 0.02,hide.ns = FALSE,
+  y.position = c(500,620),bracket.size = 1,size=7,
+  label = "{format.pval(pv=p.adj,digits = 2)}",color="darkblue")+
+  stat_pvalue_manual(pwc1,y.position = c(650,585), 
+  tip.length = 0.02,hide.ns = FALSE,,bracket.size = 1,size=7, 
+    label = "p.adj.signif",color="darkblue")+
+ # label = "p={format.pval(pv=p.adj,digits = 2)}",color="darkblue")+
+  scale_y_continuous(expand=expansion(mult=c(0.05,0.1)))+theme_minimal()+
+  theme(legend.position = "null",
+    axis.title=element_text(colour="darkblue",        
+    size=15,face = "bold"),axis.title.y=element_text(colour="darkblue"),
+    axis.text.x = element_text(size=10,face = "bold"),
+    axis.ticks = element_line(size = 0.1),axis.line = element_line(size=1))+
+  scale_x_discrete(label=c("Ct-negative","Ct-positive"))+
+  labs(y = "Interleukin-10 (pg/mL)",x=expression(bold(Serum~italic(Ct)~"-immoglubulin response")))
+
+  pwc <- newdata %>%
+  group_by(chlamydia_pos)%>%
+  dunn_test(il_10_avrg~group,p.adjust.method = "none")
+pwc <- pwc %>% add_xy_position(x="chlamydia_pos")
+
+pwc1 <- newdata %>%
+  group_by(group)%>%
+  dunn_test(il_10_avrg~chlamydia_pos,p.adjust.method = "none")
+pwc1 <- pwc1 %>% add_xy_position(x="chlamydia_pos",group = "group")
+
+# Interferon gamma levels in Ct-immunoglobulin Positive or Negative participants
+pwc_ifn <- newdata %>%
+  group_by(chlamydia_pos)%>%
+  dunn_test(ifn_gamm_avrg~group,p.adjust.method = "none")
+pwc_ifn <- pwc %>% add_xy_position(x="chlamydia_pos")
+
+pwc_ifn1 <- newdata %>%
+  group_by(group)%>%
+  dunn_test(ifn_gamm_avrg~chlamydia_pos,p.adjust.method = "none")
+pwc_ifn1 <- pwc_ifn1 %>% add_xy_position(x="chlamydia_pos",group = "group")
+
+Ifn_gam<-ggplot(newdata,aes(x=chlamydia_pos,y=ifn_gamm_avrg,col=group))+
+  geom_boxplot()+scale_color_manual(name="",values = c("blue","black"))+
+  geom_point(position=position_jitterdodge())+
+  stat_pvalue_manual(pwc_ifn, tip.length = 0.02,hide.ns = FALSE,
+  y.position = c(350,350),bracket.size = 1,size=7,
+  label = "p.adj.signif",color="darkblue")+
+  stat_pvalue_manual(pwc_ifn1,y.position = c(400,385), tip.length = 0.02,
+  hide.ns = FALSE,bracket.size = 1,size=7, label = "p.adj.signif",color="darkblue")+
+  scale_y_continuous(expand=expansion(mult=c(0.05,0.1)))+theme_minimal()+
+  theme(legend.position = "null",
+    axis.title=element_text(colour="darkblue",        
+   size=15,face = "bold"),axis.title.y=element_text(colour="darkblue"),
+   axis.text.x = element_text(size=10,face = "bold"),
+   axis.ticks = element_line(size = 0.1),axis.line = element_line(size=1))+
+  scale_x_discrete(label=c("Ct-negative","Ct-positive"))+
+  labs(y = expression(bold(Interferon-gamma~(pg/mL))),x=expression(bold(Serum~italic(Ct)~"-immoglubulin response")))
+
+
+# Chlamydia Heat Shock Protein (cHSP60)
+
+pwc_Hsp60 <- newdata %>%
+  group_by(chlamydia_pos)%>%
+  dunn_test(hsp_60_avrg~group,p.adjust.method = "none")
+pwc_Hsp60 <- pwc_Hsp60 %>% add_xy_position(x="chlamydia_pos")
+
+pwc_Hsp601 <- newdata %>%
+  group_by(group)%>%
+  dunn_test(hsp_60_avrg~chlamydia_pos,p.adjust.method = "none")
+pwc_Hsp601 <- pwc_Hsp601 %>% add_xy_position(x="chlamydia_pos",group = "group")
+
+hsp_60<-ggplot(newdata,aes(x=chlamydia_pos,y=hsp_60_avrg,col=group))+
+  geom_boxplot()+scale_color_manual(name="",values = c("blue","black"))+
+  geom_point(position=position_jitterdodge())+
+  stat_pvalue_manual(pwc_Hsp60, tip.length = 0.02,hide.ns = FALSE,
+                     y.position = c(450,450),bracket.size = 1,size=7,
+                     label = "p.adj.signif",color="darkblue")+
+  stat_pvalue_manual(pwc_Hsp601,y.position = c(560,515), tip.length = 0.02,
+                     hide.ns = FALSE,bracket.size = 1,size=7, label = "p.adj.signif",color="darkblue")+
+  scale_y_continuous(expand=expansion(mult=c(0.05,0.1)))+theme_minimal()+
+  theme(legend.position = "null",
+        axis.title=element_text(colour="darkblue",        
+                                size=15,face = "bold"),axis.title.y=element_text(colour="darkblue"),
+        axis.text.x = element_text(size=10,face = "bold"),
+        axis.ticks = element_line(size = 0.1),axis.line = element_line(size=1))+
+  scale_x_discrete(label=c("Ct-negative","Ct-positive"))+
+  labs(y = expression(bold(italic(Ct)-heat~shock~protein~(pg/mL))),x=expression(bold(Serum~italic(Ct)~"-immoglubulin response")))
+
+# Th1/Th2 expression Ifn-gamm/In-10
+newdata<-newdata%>%mutate(ratio=ifn_gamm_avrg/il_10_avrg)
+pwc_th1_2 <- newdata %>%
+  group_by(chlamydia_pos)%>%
+  dunn_test(ratio~group,p.adjust.method = "none")
+pwc_th1_2 <- pwc_th1_2 %>% add_xy_position(x="chlamydia_pos")
+
+pwc_th1_21 <- newdata %>%
+  group_by(group)%>%
+  dunn_test(ratio~chlamydia_pos,p.adjust.method = "none")
+pwc_th1_21 <- pwc_th1_21 %>% add_xy_position(x="chlamydia_pos",group = "group")
+
+Il_Ifn<-ggplot(newdata,aes(x=chlamydia_pos,y=ratio,col=group))+
+  geom_boxplot()+scale_color_manual(name="",values = c("blue","black"))+
+  geom_point(position=position_jitterdodge())+
+  stat_pvalue_manual(pwc_th1_2, tip.length = 0.02,hide.ns = FALSE,
+                     y.position = c(1.4,1.25),bracket.size = 1,size=7,
+                     label = "p.adj.signif",color="darkblue")+
+  stat_pvalue_manual(pwc_th1_21,y.position = c(1.7,1.5), tip.length = 0.02,
+                     hide.ns = FALSE,bracket.size = 1,size=7, label = "p.adj.signif",color="darkblue")+
+  scale_y_continuous(expand=expansion(mult=c(0.05,0.1)))+theme_minimal()+
+  theme(legend.position = "bottom",legend.direction = "horizontal",
+        axis.title=element_text(colour="darkblue",        
+                                size=15,face = "bold"),axis.title.y=element_text(colour="darkblue"),
+        axis.text.x = element_text(size=10,face = "bold"),
+        axis.ticks = element_line(size = 0.1),axis.line = element_line(size=1))+
+  scale_x_discrete(label=c("Ct-negative","Ct-positive"))+
+  labs(y = expression(bold(Th1/Th2)),x=expression(bold(Serum~italic(Ct)~"-immoglubulin response")))
+
+
+figure<-ggarrange(Il_10,Ifn_gam,hsp_60,Il_Ifn,labels = c("A","B","C","D")
+                  ,common.legend = TRUE,legend = "bottom")
+figure

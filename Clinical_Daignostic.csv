@@ -1,0 +1,10 @@
+ig_m,ig_g,diagnosis,Primary_infert,secondary_infert
+Neg,Neg,HF,4,8
+Neg,Neg,OC,1,1
+Neg,Neg,PID,23,32
+Neg,Neg,TF,2,2
+Neg,Neg,UF,3,4
+Neg,Neg,UTI,4,12
+Neg,Pos,PID,3,2
+Neg,Pos,TF,1,1
+Pos,Neg,PID,1,NA

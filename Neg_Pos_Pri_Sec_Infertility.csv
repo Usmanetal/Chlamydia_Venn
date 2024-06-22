@@ -1,0 +1,12 @@
+"","ig_g","ig_m","diagnosis","Primary_infert","secondary_infert"
+"1","Neg","Neg","HF",4,8
+"2","Neg","Neg","MF",3,2
+"3","Neg","Neg","OC",1,1
+"4","Neg","Neg","PID",23,32
+"5","Neg","Neg","TB",1,1
+"6","Neg","Neg","TF",1,1
+"7","Neg","Neg","UF",3,4
+"8","Neg","Neg","UTI",4,12
+"9","Neg","Pos","PID",1,NA
+"10","Pos","Neg","PID",3,2
+"11","Pos","Neg","TB",1,1
